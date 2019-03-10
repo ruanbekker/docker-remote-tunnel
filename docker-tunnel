@@ -1,0 +1,69 @@
+#!/bin/sh
+
+show_usage() {
+  echo
+  echo "Usage: $0"
+  echo "Description: Execute remote docker commands via ssh tunnel over a docker socket"
+  echo
+  echo " -h, --help                    Display usage instructions"
+  echo " -c, --connect [user@foo.bar]  Establishes Tunnel to Remote SSH Server. Expects username@remote-server"
+  echo " -t, --terminate               Terminates Tunnel"
+  echo 
+  echo "After establishing the tunnel, you need to either source the environment or export the DOCKER_HOST variable:"
+  echo " Sourcing: source /root/.docker-tunnel.sh"
+  echo " Exporting: export DOCKER_HOST=localhost:2376"
+  echo
+}
+
+generate_env_details() {
+  echo 'export DOCKER_HOST="localhost:2376"' > /root/.docker-tunnel.sh
+  echo '
+  Source the environment either with: 
+
+  1) source /root/.docker-tunnel.sh
+  2) export DOCKER_HOST="localhost:2376"
+  '
+}
+
+connect_tunnel() {
+  ssh_details=$2
+  if [ -z $ssh_details ] 
+    then raise_exception "error: [$0 $1] requires a user and endpoint to connect to, eg. [$0 $1 user@remote]"
+    else 
+      screen_command="ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i /tmp/key -NL localhost:2376:/var/run/docker.sock ${ssh_details}"
+      screen -S sshtunnel -m -d sh -c "${screen_command}"
+      generate_env_details
+  fi
+}
+
+terminate_tunnel() {
+  screen -S sshtunnel -X quit
+  if [ "$(screen -ls | grep sshtunnel | wc -l | awk '{print $1}')" != "0" ]
+    then echo "Number of tunnels running: $(screen -ls | grep sshtunnel | wc -l | awk '{print $1}')"
+  fi
+}
+
+raise_exception() {
+  local error_message="$@"
+  echo "${error_message}" 1>&2;
+}
+
+argument="$1"
+if [[ -z "${argument}" ]] 
+  then
+    raise_exception "Expected argument to be present"
+    show_usage
+  else
+    case "${argument}" in
+      -h|--help)
+        show_usage ;;
+      -c|--connect)
+        connect_tunnel $1 $2 ;;
+      -t|--terminate)
+        terminate_tunnel ;;
+      *)
+        raise_exception "Unknown argument: ${argument}"
+        show_usage ;;
+    esac
+fi
+
