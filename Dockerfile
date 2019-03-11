@@ -1,6 +1,7 @@
 FROM alpine
 
 MAINTAINER Ruan Bekker <ruan@ruanbekekr.com>
+
 ARG build_date
 LABEL image.date=${build_date}
 
