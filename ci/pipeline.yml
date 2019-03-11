@@ -1,0 +1,130 @@
+resources:
+- name: git-repo
+  type: git
+  source:
+    uri: git@github.com:ruanbekker/docker-remote-tunnel.git
+    branch: master
+    private_key: ((github_private_key))
+
+- name: docker-remote-tunnel-image
+  type: docker-image
+  source:
+    repository: ruanbekker/docker-remote-tunnel
+    tag: test
+    username: ((docker_hub_user2))
+    password: ((docker_hub_password2))
+
+- name: slack-alert
+  type: slack-notification
+  source:
+    url: ((slack_notification_url))
+
+resource_types:
+  - name: slack-notification
+    type: docker-image
+    source:
+      repository: cfcommunity/slack-notification-resource
+      tag: v1.3.0
+
+jobs:
+- name: build-cached-image
+  plan:
+  - get: git-repo
+    trigger: true
+  - task: build-cached-image-workspace
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: rbekker87/build-tools
+
+      outputs:
+      - name: workspace
+      inputs:
+      - name: git-repo
+
+      run:
+        path: /bin/sh
+        args:
+        - -c
+        - |
+          output_dir=workspace
+
+          cat << EOF > "${output_dir}/Dockerfile"
+          FROM alpine
+
+          ADD git-repo /tmp/git-repo
+          RUN mv /tmp/git-repo/docker-tunnel /usr/bin/docker-tunnel
+          RUN apk --no-cache add screen docker openssl openssh-client apache2-utils
+          RUN /usr/bin/docker-tunnel -h
+          RUN rm -rf /tmp/git-repo
+          EOF
+
+          cp -R ./git-repo "${output_dir}/git-repo"
+
+  - put: docker-remote-tunnel-image
+    params:
+      build: workspace
+
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#system_events'
+        username: 'concourse'
+        icon_emoji: ':concourse:'
+        silent: true
+        text: |
+            *$BUILD_PIPELINE_NAME/$BUILD_JOB_NAME* ($BUILD_NAME) FAILED to build image
+            https://ci.domain.xyz/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+    on_success:
+      put: slack-alert
+      params:
+        channel: '#system_events'
+        username: 'concourse'
+        icon_emoji: ':concourse:'
+        silent: true
+        text: |
+            *$BUILD_PIPELINE_NAME/$BUILD_JOB_NAME* ($BUILD_NAME) SUCCESS - Image has been published
+            https://ci.domain.xyz/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+
+- name: test
+  plan:
+  - get: docker-remote-tunnel-image
+    passed: [build-cached-image]
+    trigger: true
+  - get: git-repo
+    passed: [build-cached-image]
+  - task: run-tests
+    image: docker-remote-tunnel-image
+    config:
+      platform: linux
+      inputs:
+      - name: git-repo
+      run:
+        dir: git-repo
+        path: sh
+        args:
+        - /usr/bin/docker-tunnel
+        - --help
+
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#system_events'
+        username: 'concourse'
+        icon_emoji: ':concourse:'
+        silent: true
+        text: |
+            *$BUILD_PIPELINE_NAME/$BUILD_JOB_NAME* ($BUILD_NAME) FAILED - Testing image failure
+            https://ci.domain.xyz/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+    on_success:
+      put: slack-alert
+      params:
+        channel: '#system_events'
+        username: 'concourse'
+        icon_emoji: ':concourse:'
+        silent: true
+        text: |
+            *$BUILD_PIPELINE_NAME/$BUILD_JOB_NAME* ($BUILD_NAME) SUCCESS - Testing image Succeeded
+            https://ci.domain.xyz/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
