@@ -12,7 +12,7 @@ resources:
   source:
     uri: git@github.com:davidwalter0/docker-remote-tunnel.git
     # uri: git@github.com:ruanbekker/docker-remote-tunnel.git
-    branch: davidwalter0-patch-1
+    branch: master
     private_key: ((david.github-private-key))
 
 # - name: docker-remote-tunnel-image
