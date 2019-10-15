@@ -10,18 +10,19 @@ resources:
 - name: src
   type: git
   source:
-    uri: git@github.com:davidwalter0/docker-remote-tunnel.git
+    # uri: git@github.com:davidwalter0/docker-remote-tunnel.git
+    uri: https://github.com/davidwalter0/docker-remote-tunnel
     # uri: git@github.com:ruanbekker/docker-remote-tunnel.git
     branch: master
-    private_key: ((david.github-private-key))
+    # private_key: ((david.github-private-key))
 
-- name: docker-remote-tunnel-image
-  type: docker-image
-  source:
-    repository: davidwalter/docker-remote-tunnel
-    tag: test
-    username: ((david.dockerhub-user))
-    password: ((david.dockerhub-password))
+########## - name: docker-remote-tunnel-image
+##########   type: docker-image
+##########   source:
+##########     repository: davidwalter/docker-remote-tunnel
+##########     tag: test
+##########     username: ((david.dockerhub-user))
+##########     password: ((david.dockerhub-password))
 
 - name: alert
   type: slack-notification
@@ -59,9 +60,6 @@ jobs:
         trigger: true
       - task: task-reuse
         params:
-          CONTEXT: smoke
-          TOKEN: ((david.token))
-          GHE_TOKEN: ((david.github-private-key))
           BUSYBOX_TAG: ((david.busybox-tag))
         file: src/ci/task/task01.yml
         on_failure:
@@ -70,46 +68,46 @@ jobs:
               params:
                 text: ":fire: <https://ci.comcast.net/teams/viper-veg/pipelines/coral/jobs/deploy-qa/builds/latest> Deployment Failed :fire:"
 
-  - name: test
-    plan:
-    - get: docker-remote-tunnel-image
-      # passed: [build-cached-image]
-      # trigger: true
-    - get: src
-      # passed: [build-cached-image]
-    - task: run-tests
-      image: docker-remote-tunnel-image
-      config:
-        platform: linux
-        inputs:
-        - name: src
-        run:
-          dir: src
-          path: sh
-          args:
-          - /usr/bin/docker-tunnel
-          - --help
+  ########## - name: test
+  ##########   plan:
+  ##########   - get: docker-remote-tunnel-image
+  ##########     # passed: [build-cached-image]
+  ##########     # trigger: true
+  ##########   - get: src
+  ##########     # passed: [build-cached-image]
+  ##########   - task: run-tests
+  ##########     image: docker-remote-tunnel-image
+  ##########     config:
+  ##########       platform: linux
+  ##########       inputs:
+  ##########       - name: src
+  ##########       run:
+  ##########         dir: src
+  ##########         path: sh
+  ##########         args:
+  ##########         - /usr/bin/docker-tunnel
+  ##########         - --help
 
-      on_failure:
-        put: alert
-        params:
-          # channel: '#system_events'
-          username: 'concourse'
-          icon_emoji: ':concourse:'
-          silent: true
-          text: |
-              *$BUILD_PIPELINE_NAME/$BUILD_JOB_NAME* ($BUILD_NAME) FAILED - Testing image failure
-              https://ci.domain.com/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
-      on_success:
-        put: alert
-        params:
-          # channel: '#system_events'
-          username: 'concourse'
-          icon_emoji: ':concourse:'
-          silent: true
-          text: |
-              *$BUILD_PIPELINE_NAME/$BUILD_JOB_NAME* ($BUILD_NAME) SUCCESS - Testing image Succeeded
-              https://ci.domain.com/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+  ##########     on_failure:
+  ##########       put: alert
+  ##########       params:
+  ##########         # channel: '#system_events'
+  ##########         username: 'concourse'
+  ##########         icon_emoji: ':concourse:'
+  ##########         silent: true
+  ##########         text: |
+  ##########             *$BUILD_PIPELINE_NAME/$BUILD_JOB_NAME* ($BUILD_NAME) FAILED - Testing image failure
+  ##########             https://ci.domain.com/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+  ##########     on_success:
+  ##########       put: alert
+  ##########       params:
+  ##########         # channel: '#system_events'
+  ##########         username: 'concourse'
+  ##########         icon_emoji: ':concourse:'
+  ##########         silent: true
+  ##########         text: |
+  ##########             *$BUILD_PIPELINE_NAME/$BUILD_JOB_NAME* ($BUILD_NAME) SUCCESS - Testing image Succeeded
+  ##########             https://ci.domain.com/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
 
 ########## - name: build-cached-image
 ##########   plan:

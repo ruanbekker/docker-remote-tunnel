@@ -1,17 +1,16 @@
 ---
-platform: linux
+params:
+  CONTEXT:
+  TOKEN:
+  VAULT_GHE_TOKEN:
+  BUSYBOX_TAG:
 
+platform: linux
 image_resource:
   type: registry-image
   source:
     repository: busybox
     tag: ${BUSYBOX_TAG}
-
-params:
-  CONTEXT:
-  TOKEN:
-  VAULT_GHE_TOKEN:
-
 
 run:
   path: /bin/sh
@@ -20,8 +19,6 @@ run:
     - |
       date
       busybox | head -1
-      echo CONTEXT: ${CONTEXT}
-      echo TOKEN: ${TOKEN}
-      echo VAULT_GHE_TOKEN: ${VAULT_GHE_TOKEN}
+      echo TAG: ${BUSYBOX_TAG}
       date
 
