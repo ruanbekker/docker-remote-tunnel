@@ -5,7 +5,7 @@ image_resource:
   type: registry-image
   source:
     repository: busybox
-    tag: (( credentials.tag ))
+    tag: (( credentials.busybox-tag ))
 
 params:
   CONTEXT:
