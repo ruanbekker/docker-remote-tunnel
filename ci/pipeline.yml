@@ -58,6 +58,29 @@ jobs:
     plan:
       - get: src
         trigger: true
+      - task: fix-version
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: busybox
+              tag: ((david.busybox-tag))
+          run:
+            path: /bin/sh
+            args:
+            - -c
+            - |
+              date
+              busybox | head -1
+              echo tag: ((david.busybox-tag))
+              date
+              sed -ie 's,[[BUSYBOX_TAG]],((david.busybox-tag)),g' src/ci/task/task01.yml
+              echo "Ok?"
+              cat src/ci/task/task01.yml
+        params:
+          BUSYBOX_TAG: ((david.busybox-tag))
+          
       - task: task-reuse
         params:
           BUSYBOX_TAG: ((david.busybox-tag))
