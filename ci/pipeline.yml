@@ -62,7 +62,7 @@ jobs:
           CONTEXT: smoke
           TOKEN: ((david.token))
           GHE_TOKEN: ((david.github-private-key))
-          BUSYBOX-TAG: ((david.busybox-tag))
+          BUSYBOX_TAG: ((david.busybox-tag))
         file: src/ci/task/task01.yml
         on_failure:
           do:
