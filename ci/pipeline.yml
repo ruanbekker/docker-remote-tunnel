@@ -7,7 +7,7 @@ resource_types:
       tag: ((david.slack-tag))
 
 resources:
-- name: ci
+- name: src
   type: git
   source:
     uri: git@github.com:davidwalter0/docker-remote-tunnel.git
@@ -55,14 +55,14 @@ jobs:
   - name: task-reuse
     serial: true
     plan:
-      - get: ci
+      - get: src
         trigger: true
       - task: task-reuse
         params:
           CONTEXT: smoke
           TOKEN: ((david.token))
           GHE_TOKEN: ((david.github-private-key))
-        file: ci/task/task01.yml
+        file: src/ci/task/task01.yml
         on_failure:
           do:
             - put: alert
@@ -71,7 +71,7 @@ jobs:
 
 ########## - name: build-cached-image
 ##########   plan:
-##########   - get: ci
+##########   - get: src
 ##########     trigger: true
 ##########   - task: build-cached-image-workspace
 ##########     config:
@@ -84,7 +84,7 @@ jobs:
 ##########       outputs:
 ##########       - name: workspace
 ##########       inputs:
-##########       - name: ci
+##########       - name: src
 
 ##########       run:
 ##########         path: /bin/sh
@@ -97,14 +97,14 @@ jobs:
 ##########           cat << EOF > "${output_dir}/Dockerfile"
 ##########           FROM alpine
 
-##########           ADD ci /tmp/ci
-##########           RUN mv /tmp/ci/docker-tunnel /usr/bin/docker-tunnel
+##########           ADD src /tmp/src
+##########           RUN mv /tmp/src/docker-tunnel /usr/bin/docker-tunnel
 ##########           RUN apk --no-cache add screen docker openssl openssh-client apache2-utils
 ##########           RUN /usr/bin/docker-tunnel -h
-##########           RUN rm -rf /tmp/ci
+##########           RUN rm -rf /tmp/src
 ##########           EOF
 
-##########           cp -R ./ci "${output_dir}/ci"
+##########           cp -R ./src "${output_dir}/src"
 
 ##########   - put: docker-remote-tunnel-image
 ##########     params:
@@ -136,16 +136,16 @@ jobs:
 ##########   - get: docker-remote-tunnel-image
 ##########     passed: [build-cached-image]
 ##########     # trigger: true
-##########   - get: ci
+##########   - get: src
 ##########     passed: [build-cached-image]
 ##########   - task: run-tests
 ##########     image: docker-remote-tunnel-image
 ##########     config:
 ##########       platform: linux
 ##########       inputs:
-##########       - name: ci
+##########       - name: src
 ##########       run:
-##########         dir: ci
+##########         dir: src
 ##########         path: sh
 ##########         args:
 ##########         - /usr/bin/docker-tunnel
