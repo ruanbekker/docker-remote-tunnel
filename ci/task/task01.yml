@@ -10,9 +10,8 @@ image_resource:
   type: registry-image
   source:
     repository: busybox
-    tag: '{{BUSYBOX_TAG}}'
+    tag: '@@BUSYBOX_TAG@@'
 
-#  tag: '@@BUSYBOX_TAG@@'
 inputs:
   - name: src
 
