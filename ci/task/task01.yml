@@ -1,0 +1,27 @@
+---
+platform: linux
+
+image_resource:
+  type: registry-image
+  source:
+    repository: busybox
+    tag: (( credentials.tag ))
+
+params:
+  CONTEXT:
+  TOKEN:
+  VAULT_GHE_TOKEN:
+
+
+run:
+  path: /bin/sh
+  args:
+    - -c
+    - |
+      date
+      busybox | head -1
+      echo CONTEXT: ${CONTEXT}
+      echo TOKEN: ${TOKEN}
+      echo VAULT_GHE_TOKEN: ${VAULT_GHE_TOKEN}
+      date
+

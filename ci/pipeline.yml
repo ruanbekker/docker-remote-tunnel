@@ -1,130 +1,68 @@
-resources:
-- name: git-repo
-  type: git
-  source:
-    uri: git@github.com:ruanbekker/docker-remote-tunnel.git
-    branch: master
-    private_key: ((github_private_key))
-
-- name: docker-remote-tunnel-image
-  type: docker-image
-  source:
-    repository: ruanbekker/docker-remote-tunnel
-    tag: test
-    username: ((docker_hub_user2))
-    password: ((docker_hub_password2))
-
-- name: slack-alert
-  type: slack-notification
-  source:
-    url: ((slack_notification_url))
-
+---
 resource_types:
   - name: slack-notification
     type: docker-image
     source:
       repository: cfcommunity/slack-notification-resource
-      tag: v1.3.0
+      tag: ((david.slack-tag))
+
+resources:
+- name: git-repo
+  type: git
+  source:
+    uri: git@github.com:davidwalter0/docker-remote-tunnel.git
+    # uri: git@github.com:ruanbekker/docker-remote-tunnel.git
+    branch: davidwalter0-patch-1
+    private_key: ((david.github_private_key))
+
+- name: docker-remote-tunnel-image
+  type: docker-image
+  source:
+    repository: davidwalter/docker-remote-tunnel
+    tag: test
+    username: ((david.dockerhub_user))
+    password: ((david.dockerhub_password))
+
+- name: alert
+  type: slack-notification
+  source:
+    url: ((david.slack-notification-url))
 
 jobs:
-- name: build-cached-image
-  plan:
-  - get: git-repo
-    trigger: true
-  - task: build-cached-image-workspace
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: rbekker87/build-tools
+  - name: job
+    public: true
+    plan:
+      - task: simple-task
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: busybox
+              tag: ((david.busybox-tag))
+          run:
+            path: /bin/sh
+            args:
+            - -c
+            - |
+              date
+              busybox | head -1
+              date
+            # args: ["Hello, world!"]
+            # - 'busybox | head -1'
+            # # args: ["Hello, world!"]
 
-      outputs:
-      - name: workspace
-      inputs:
-      - name: git-repo
-
-      run:
-        path: /bin/sh
-        args:
-        - -c
-        - |
-          output_dir=workspace
-
-          cat << EOF > "${output_dir}/Dockerfile"
-          FROM alpine
-
-          ADD git-repo /tmp/git-repo
-          RUN mv /tmp/git-repo/docker-tunnel /usr/bin/docker-tunnel
-          RUN apk --no-cache add screen docker openssl openssh-client apache2-utils
-          RUN /usr/bin/docker-tunnel -h
-          RUN rm -rf /tmp/git-repo
-          EOF
-
-          cp -R ./git-repo "${output_dir}/git-repo"
-
-  - put: docker-remote-tunnel-image
-    params:
-      build: workspace
-
-    on_failure:
-      put: slack-alert
-      params:
-        channel: '#system_events'
-        username: 'concourse'
-        icon_emoji: ':concourse:'
-        silent: true
-        text: |
-            *$BUILD_PIPELINE_NAME/$BUILD_JOB_NAME* ($BUILD_NAME) FAILED to build image
-            https://ci.domain.xyz/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
-    on_success:
-      put: slack-alert
-      params:
-        channel: '#system_events'
-        username: 'concourse'
-        icon_emoji: ':concourse:'
-        silent: true
-        text: |
-            *$BUILD_PIPELINE_NAME/$BUILD_JOB_NAME* ($BUILD_NAME) SUCCESS - Image has been published
-            https://ci.domain.xyz/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
-
-- name: test
-  plan:
-  - get: docker-remote-tunnel-image
-    passed: [build-cached-image]
-    trigger: true
-  - get: git-repo
-    passed: [build-cached-image]
-  - task: run-tests
-    image: docker-remote-tunnel-image
-    config:
-      platform: linux
-      inputs:
-      - name: git-repo
-      run:
-        dir: git-repo
-        path: sh
-        args:
-        - /usr/bin/docker-tunnel
-        - --help
-
-    on_failure:
-      put: slack-alert
-      params:
-        channel: '#system_events'
-        username: 'concourse'
-        icon_emoji: ':concourse:'
-        silent: true
-        text: |
-            *$BUILD_PIPELINE_NAME/$BUILD_JOB_NAME* ($BUILD_NAME) FAILED - Testing image failure
-            https://ci.domain.xyz/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
-    on_success:
-      put: slack-alert
-      params:
-        channel: '#system_events'
-        username: 'concourse'
-        icon_emoji: ':concourse:'
-        silent: true
-        text: |
-            *$BUILD_PIPELINE_NAME/$BUILD_JOB_NAME* ($BUILD_NAME) SUCCESS - Testing image Succeeded
-            https://ci.domain.xyz/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+  - name: task-reuse
+    serial: true
+    plan:
+      - task: task-reuse
+        params:
+          CONTEXT: smoke
+          TOKEN: ((david.token))
+          GHE_TOKEN: ((david.github-access-token))
+        file: ci/task01.yaml
+        on_failure:
+          do:
+            - put: alert
+              params:
+                text: ":fire: <https://ci.comcast.net/teams/viper-veg/pipelines/coral/jobs/deploy-qa/builds/latest> Deployment Failed :fire:"
