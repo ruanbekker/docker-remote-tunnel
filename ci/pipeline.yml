@@ -10,11 +10,11 @@ resources:
 - name: src
   type: git
   source:
-    # uri: git@github.com:davidwalter0/docker-remote-tunnel.git
-    uri: https://github.com/davidwalter0/docker-remote-tunnel
+    uri: git@github.com:davidwalter0/docker-remote-tunnel.git
+    # uri: https://github.com/davidwalter0/docker-remote-tunnel
     # uri: git@github.com:ruanbekker/docker-remote-tunnel.git
     branch: master
-    # private_key: ((david.github-private-key))
+    private_key: ((david.github-private-key))
 
 ########## - name: docker-remote-tunnel-image
 ##########   type: docker-image
@@ -66,6 +66,8 @@ jobs:
             source:
               repository: busybox
               tag: ((david.busybox-tag))
+          inputs:
+            - name: src
           run:
             path: /bin/sh
             args:
@@ -75,7 +77,11 @@ jobs:
               busybox | head -1
               echo tag: ((david.busybox-tag))
               date
-              sed -ie 's,[[BUSYBOX_TAG]],((david.busybox-tag)),g' src/ci/task/task01.yml
+              echo "Ok?"
+              cat src/ci/task/task01.yml
+              ls -al
+              pwd
+              sed -ie 's,@@BUSYBOX_TAG@@,((david.busybox-tag)),g' src/ci/task/task01.yml
               echo "Ok?"
               cat src/ci/task/task01.yml
         params:
